@@ -68,17 +68,36 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 		listener.getLogger().println("Scheduling " + jobName);
 		QueueTaskFuture<? extends AbstractBuild> future = jobToRun.scheduleBuild2(0, new Cause.UpstreamCause(build), parseParameters(jobParameters));
+		if (future == null) {
+			String errorMessage = build.getFullDisplayName() + " was unable to schedule " + jobName + ". This could be for a number of reasons. Make sure the build is able to do concurrent builds and isn't disabled.";
+			log.warning(errorMessage);
+			throw new NullPointerException(errorMessage);
+		}
+
 		try {
 			AbstractBuild abstractBuild = future.waitForStart();
+			if(abstractBuild == null) {
+				log.severe("The build's waitForStart future returned null. This is most likely a bug in Jenkins core.");
+				throw new NullPointerException("The build's waitForStart future returned null. This is most likely a bug in Jenkins core.");
+			}
 
 			listener.getLogger().print("Running ");
-			listener.hyperlink("../../../"+abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
+			listener.hyperlink("../../../" + abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
 			listener.getLogger().println(".");
+		} catch (ExecutionException e) {
+			log.severe(e.getMessage() + "\n" + ExceptionUtils.getFullStackTrace(e));
+			throw new RuntimeException(e);
+		}
 
-			abstractBuild = future.get();
+		try {
+			AbstractBuild abstractBuild = future.get();
+			if(abstractBuild == null) {
+				log.severe("The build's future returned null. This is most likely a bug in Jenkins core.");
+				throw new NullPointerException("The build's future returned null. This is most likely a bug in Jenkins core.");
+			}
 
 			listener.getLogger().print("Finished running ");
-			listener.hyperlink("../../../"+abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
+			listener.hyperlink("../../../" + abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
 			listener.getLogger().println(".");
 
 			if(propertiesFileToInject != null && !propertiesFileToInject.isEmpty()) {
