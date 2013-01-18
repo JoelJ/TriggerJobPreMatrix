@@ -63,7 +63,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		return result;
 	}
 
-	private static void runJob(Run build, BuildListener listener, String jobName, String jobParameters, String propertiesFileToInject) throws InterruptedException, IOException {
+	private static void runJob(Run build, BuildListener listener, String jobName, String jobParametersNotExpanded, String propertiesFileToInject) throws InterruptedException, IOException {
 		log.info(build.getFullDisplayName() + " running " + jobName + " before matrix jobs.");
 
 		AbstractProject<?, ? extends AbstractBuild> jobToRun = findJob(jobName);
@@ -74,9 +74,12 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 		listener.getLogger().println("Scheduling " + jobName);
 
+		String jobParametersExpanded = build.getEnvironment(listener).expand(jobParametersNotExpanded);
+
 		QueueTaskFuture<? extends AbstractBuild> future = null;
 		for(int i = 0; future == null && i < NUM_RETRIES; i++) {
-			future = jobToRun.scheduleBuild2(i, new Cause.UpstreamCause(build), parseParameters(jobParameters));
+			ParametersAction parameterValues = parseParameters(jobParametersExpanded, jobToRun.getProperty(ParametersDefinitionProperty.class), listener);
+			future = jobToRun.scheduleBuild2(i, new Cause.UpstreamCause(build), parameterValues);
 			if (future == null && i < NUM_RETRIES - 1) { //Don't sleep if it's the last one.
 				listener.getLogger().println("Couldn't schedule " + jobToRun.getFullDisplayName() + ". Retrying ("+i+").");
 				Thread.sleep(5000);
@@ -159,25 +162,38 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		return jobToRun;
 	}
 
-	private static ParametersAction parseParameters(String propertiesStr) {
+	private static ParametersAction parseParameters(String propertiesStr, ParametersDefinitionProperty parameterDefinitions, BuildListener listener) {
 		StringInputStream inStream = new StringInputStream(propertiesStr);
-		return parseParameters(inStream);
+		return parseParameters(inStream, parameterDefinitions, listener);
 	}
 
-	private static ParametersAction parseParameters(InputStream inStream) {
+	private static ParametersAction parseParameters(InputStream inStream, ParametersDefinitionProperty parameterDefinitions, BuildListener listener) {
 		List<ParameterValue> values = new LinkedList<ParameterValue>();
 
 		Properties properties = new Properties();
 		try {
-
 			properties.load(inStream);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+
+		listener.getLogger().println("Using parameters: ");
+		Set<String> addedParameters = new HashSet<String>();
 		for (Object keyObj : properties.keySet()) {
 			String key = String.valueOf(keyObj);
 			String value = properties.getProperty(key);
+			listener.getLogger().println("\t`"+key+"`=>`"+value+"`");
 			values.add(new StringParameterValue(key, value));
+			addedParameters.add(key);
+		}
+
+		for (String defaultParameterName : parameterDefinitions.getParameterDefinitionNames()) {
+			if(!addedParameters.contains(defaultParameterName)) {
+				ParameterDefinition parameterDefinition = parameterDefinitions.getParameterDefinition(defaultParameterName);
+				ParameterValue defaultParameterValue = parameterDefinition.getDefaultParameterValue();
+				listener.getLogger().println("\t`Using default: `"+defaultParameterName+"`");
+				values.add(defaultParameterValue);
+			}
 		}
 
 		return new ParametersAction(values);
