@@ -1,6 +1,7 @@
 package com.attask.jenkins;
 
 import hudson.Extension;
+import hudson.Util;
 import hudson.matrix.*;
 import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
@@ -29,6 +30,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 	private String postJobName;
 	private String postJobParameters;
 	private String postPropertiesFileToInject;
+	private static final int NUM_RETRIES = 5;
 
 	@DataBoundConstructor
 	public PreMatrixJob(String preJobName, String preJobParameters, String prePropertiesFileToInject,
@@ -63,13 +65,26 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 	private static void runJob(Run build, BuildListener listener, String jobName, String jobParameters, String propertiesFileToInject) throws InterruptedException, IOException {
 		log.info(build.getFullDisplayName() + " running " + jobName + " before matrix jobs.");
-		@SuppressWarnings("unchecked")
-		AbstractProject<?, ? extends AbstractBuild> jobToRun = Jenkins.getInstance().getItemByFullName(jobName, AbstractProject.class);
+
+		AbstractProject<?, ? extends AbstractBuild> jobToRun = findJob(jobName);
+
+		if(jobToRun.isDisabled()) {
+			throw new IllegalArgumentException(jobToRun.getFullDisplayName() + " has been disabled.");
+		}
 
 		listener.getLogger().println("Scheduling " + jobName);
-		QueueTaskFuture<? extends AbstractBuild> future = jobToRun.scheduleBuild2(0, new Cause.UpstreamCause(build), parseParameters(jobParameters));
-		if (future == null) {
-			String errorMessage = build.getFullDisplayName() + " was unable to schedule " + jobName + ". This could be for a number of reasons. Make sure the build is able to do concurrent builds and isn't disabled.";
+
+		QueueTaskFuture<? extends AbstractBuild> future = null;
+		for(int i = 0; future == null && i < NUM_RETRIES; i++) {
+			future = jobToRun.scheduleBuild2(i, new Cause.UpstreamCause(build), parseParameters(jobParameters));
+			if (future == null && i < NUM_RETRIES - 1) { //Don't sleep if it's the last one.
+				listener.getLogger().println("Couldn't schedule " + jobToRun.getFullDisplayName() + ". Retrying ("+i+").");
+				Thread.sleep(5000);
+			}
+		}
+
+		if(future == null) {
+			String errorMessage = build.getFullDisplayName() + " was unable to schedule " + jobName + ".";
 			log.warning(errorMessage);
 			throw new NullPointerException(errorMessage);
 		}
@@ -120,6 +135,28 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 			log.severe(e.getMessage() + "\n" + ExceptionUtils.getFullStackTrace(e));
 			throw new RuntimeException(e);
 		}
+	}
+
+	/**
+	 * Searches for a project with the given name or throws an exception if the given project doesn't exist.
+	 * @param jobName The name of the job to search for.
+	 * @return The first project that matches the given name (However, it shouldn't be possible to have a conflict.)
+	 */
+	private static AbstractProject<?, ? extends AbstractBuild> findJob(String jobName) {
+		AbstractProject<?, ? extends AbstractBuild> jobToRun = null;
+		List<AbstractProject> allItems = Jenkins.getInstance().getAllItems(AbstractProject.class);
+		for (AbstractProject allItem : allItems) {
+			if(allItem.getName().equals(jobName)) {
+				//noinspection unchecked
+				jobToRun = allItem;
+				break;
+			}
+		}
+
+		if(jobToRun == null) {
+			throw new IllegalArgumentException("The specified Job name ("+jobName+") does not exist. Failing.");
+		}
+		return jobToRun;
 	}
 
 	private static ParametersAction parseParameters(String propertiesStr) {
