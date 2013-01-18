@@ -187,12 +187,14 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 			addedParameters.add(key);
 		}
 
-		for (String defaultParameterName : parameterDefinitions.getParameterDefinitionNames()) {
-			if(!addedParameters.contains(defaultParameterName)) {
-				ParameterDefinition parameterDefinition = parameterDefinitions.getParameterDefinition(defaultParameterName);
-				ParameterValue defaultParameterValue = parameterDefinition.getDefaultParameterValue();
-				listener.getLogger().println("\t`Using default: `"+defaultParameterName+"`");
-				values.add(defaultParameterValue);
+		if(parameterDefinitions != null) {
+			for (String defaultParameterName : parameterDefinitions.getParameterDefinitionNames()) {
+				if(!addedParameters.contains(defaultParameterName)) {
+					ParameterDefinition parameterDefinition = parameterDefinitions.getParameterDefinition(defaultParameterName);
+					ParameterValue defaultParameterValue = parameterDefinition.getDefaultParameterValue();
+					listener.getLogger().println("\t`Using default: `"+defaultParameterName+"`");
+					values.add(defaultParameterValue);
+				}
 			}
 		}
 
