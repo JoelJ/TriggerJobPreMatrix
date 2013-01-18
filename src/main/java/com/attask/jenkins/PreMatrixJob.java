@@ -51,19 +51,26 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		BuildListener listener = execution.getListener();
 		Run build = execution.getBuild();
 
-		preRun(build, listener);
+		Result result = preRun(build, listener);
 
-		Result result;
-		try {
-			result = super.run(execution);
-		} finally {
-			postRun(build, listener);
+		if(result.isBetterThan(Result.FAILURE)) {
+			try {
+				Result runResult = super.run(execution);
+				if(runResult.isWorseThan(result)) {
+					result = runResult;
+				}
+			} finally {
+				Result postResult = postRun(build, listener);
+				if(postResult.isWorseThan(result)) {
+					result = postResult;
+				}
+			}
 		}
 
 		return result;
 	}
 
-	private static void runJob(Run build, BuildListener listener, String jobName, String jobParametersNotExpanded, String propertiesFileToInject) throws InterruptedException, IOException {
+	private static Result runJob(Run build, BuildListener listener, String jobName, String jobParametersNotExpanded, String propertiesFileToInject) throws InterruptedException, IOException {
 		log.info(build.getFullDisplayName() + " running " + jobName + " before matrix jobs.");
 
 		AbstractProject<?, ? extends AbstractBuild> jobToRun = findJob(jobName);
@@ -134,6 +141,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 				build.addAction(new MapInjectorAction(properties));
 			}
+			return abstractBuild.getResult();
 		} catch (ExecutionException e) {
 			log.severe(e.getMessage() + "\n" + ExceptionUtils.getFullStackTrace(e));
 			throw new RuntimeException(e);
@@ -201,12 +209,12 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		return new ParametersAction(values);
 	}
 
-	private void preRun(Run build, BuildListener listener) throws InterruptedException, IOException {
-		runJob(build, listener, getPreJobName(), getPreJobParameters(), getPrePropertiesFileToInject());
+	private Result preRun(Run build, BuildListener listener) throws InterruptedException, IOException {
+		return runJob(build, listener, getPreJobName(), getPreJobParameters(), getPrePropertiesFileToInject());
 	}
 
-	private void postRun(Run build, BuildListener listener) throws InterruptedException, IOException {
-		runJob(build, listener, getPostJobName(), getPostJobParameters(), getPostPropertiesFileToInject());
+	private Result postRun(Run build, BuildListener listener) throws InterruptedException, IOException {
+		return runJob(build, listener, getPostJobName(), getPostJobParameters(), getPostPropertiesFileToInject());
 	}
 
 	public String getPreJobName() {
