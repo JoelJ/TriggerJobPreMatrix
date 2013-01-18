@@ -37,22 +37,25 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 						String postJobName, String postJobParameters, String postPropertiesFileToInject) {
 		super(false, false, "", null, new NoopMatrixConfigurationSorter());
 
-		this.preJobName = preJobName;
+		this.preJobName = preJobName == null ? "" : postJobName.trim();
 		this.preJobParameters = preJobParameters;
 		this.prePropertiesFileToInject = prePropertiesFileToInject;
 
-		this.postJobName = postJobName;
+		this.postJobName = postJobName == null ? "" : postJobName.trim();
 		this.postJobParameters = postJobParameters;
 		this.postPropertiesFileToInject = postPropertiesFileToInject;
 	}
 
 	@Override
 	public Result run(MatrixBuild.MatrixBuildExecution execution) throws InterruptedException, IOException {
+
 		BuildListener listener = execution.getListener();
 		Run build = execution.getBuild();
 
-		Result result = preRun(build, listener);
-
+		Result result = Result.SUCCESS;
+		if (!preJobName.isEmpty()) {
+			result = preRun(build, listener);
+		}
 		if(result.isBetterThan(Result.FAILURE)) {
 			try {
 				Result runResult = super.run(execution);
@@ -60,13 +63,14 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 					result = runResult;
 				}
 			} finally {
-				Result postResult = postRun(build, listener);
-				if(postResult.isWorseThan(result)) {
-					result = postResult;
+				if (!postJobName.isEmpty()) {
+					Result postResult = postRun(build, listener);
+					if(postResult.isWorseThan(result)) {
+						result = postResult;
+					}
 				}
 			}
 		}
-
 		return result;
 	}
 
@@ -157,15 +161,15 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		AbstractProject<?, ? extends AbstractBuild> jobToRun = null;
 		List<AbstractProject> allItems = Jenkins.getInstance().getAllItems(AbstractProject.class);
 		for (AbstractProject allItem : allItems) {
-			if(allItem.getName().equals(jobName)) {
+			if (allItem.getName().equals(jobName)) {
 				//noinspection unchecked
 				jobToRun = allItem;
 				break;
 			}
 		}
 
-		if(jobToRun == null) {
-			throw new IllegalArgumentException("The specified Job name ("+jobName+") does not exist. Failing.");
+		if (jobToRun == null) {
+			throw new IllegalArgumentException("The specified Job name (" + jobName + ") does not exist. Failing.");
 		}
 		return jobToRun;
 	}
