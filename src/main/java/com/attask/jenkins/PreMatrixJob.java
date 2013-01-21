@@ -37,7 +37,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 						String postJobName, String postJobParameters, String postPropertiesFileToInject) {
 		super(false, false, "", null, new NoopMatrixConfigurationSorter());
 
-		this.preJobName = preJobName == null ? "" : postJobName.trim();
+		this.preJobName = preJobName == null ? "" : preJobName.trim();
 		this.preJobParameters = preJobParameters;
 		this.prePropertiesFileToInject = prePropertiesFileToInject;
 
