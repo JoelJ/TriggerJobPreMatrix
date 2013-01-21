@@ -1,6 +1,7 @@
 package com.attask.jenkins;
 
 import hudson.EnvVars;
+import hudson.matrix.MatrixChildAction;
 import hudson.model.AbstractBuild;
 import hudson.model.EnvironmentContributingAction;
 
@@ -11,7 +12,7 @@ import java.util.Map;
  * Date: 1/15/13
  * Time: 5:02 PM
  */
-public class MapInjectorAction implements EnvironmentContributingAction {
+public class MapInjectorAction implements EnvironmentContributingAction, MatrixChildAction {
 	private final Map<?, ?> map;
 
 	public MapInjectorAction(Map<?, ?> map) {
