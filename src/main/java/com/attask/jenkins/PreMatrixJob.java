@@ -56,18 +56,18 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		if (!preJobName.isEmpty()) {
 			result = preRun(build, listener);
 		}
-		if(result.isBetterThan(Result.FAILURE)) {
-			try {
+		try {
+			if (result.isBetterThan(Result.FAILURE)) {
 				Result runResult = super.run(execution);
-				if(runResult.isWorseThan(result)) {
+				if (runResult.isWorseThan(result)) {
 					result = runResult;
 				}
-			} finally {
-				if (!postJobName.isEmpty()) {
-					Result postResult = postRun(build, listener);
-					if(postResult.isWorseThan(result)) {
-						result = postResult;
-					}
+			}
+		} finally {
+			if (!postJobName.isEmpty()) {
+				Result postResult = postRun(build, listener);
+				if (postResult.isWorseThan(result)) {
+					result = postResult;
 				}
 			}
 		}
@@ -79,7 +79,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 		AbstractProject<?, ? extends AbstractBuild> jobToRun = findJob(jobName);
 
-		if(jobToRun.isDisabled()) {
+		if (jobToRun.isDisabled()) {
 			throw new IllegalArgumentException(jobToRun.getFullDisplayName() + " has been disabled.");
 		}
 
@@ -88,16 +88,16 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		String jobParametersExpanded = build.getEnvironment(listener).expand(jobParametersNotExpanded);
 
 		QueueTaskFuture<? extends AbstractBuild> future = null;
-		for(int i = 0; future == null && i < NUM_RETRIES; i++) {
+		for (int i = 0; future == null && i < NUM_RETRIES; i++) {
 			ParametersAction parameterValues = parseParameters(jobParametersExpanded, jobToRun.getProperty(ParametersDefinitionProperty.class), listener);
 			future = jobToRun.scheduleBuild2(i, new Cause.UpstreamCause(build), parameterValues);
 			if (future == null && i < NUM_RETRIES - 1) { //Don't sleep if it's the last one.
-				listener.getLogger().println("Couldn't schedule " + jobToRun.getFullDisplayName() + ". Retrying ("+i+").");
+				listener.getLogger().println("Couldn't schedule " + jobToRun.getFullDisplayName() + ". Retrying (" + i + ").");
 				Thread.sleep(5000);
 			}
 		}
 
-		if(future == null) {
+		if (future == null) {
 			String errorMessage = build.getFullDisplayName() + " was unable to schedule " + jobName + ".";
 			log.warning(errorMessage);
 			throw new NullPointerException(errorMessage);
@@ -105,7 +105,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 		try {
 			AbstractBuild abstractBuild = future.waitForStart();
-			if(abstractBuild == null) {
+			if (abstractBuild == null) {
 				log.severe("The build's waitForStart future returned null. This is most likely a bug in Jenkins core.");
 				throw new NullPointerException("The build's waitForStart future returned null. This is most likely a bug in Jenkins core.");
 			}
@@ -120,7 +120,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 		try {
 			AbstractBuild abstractBuild = future.get();
-			if(abstractBuild == null) {
+			if (abstractBuild == null) {
 				log.severe("The build's future returned null. This is most likely a bug in Jenkins core.");
 				throw new NullPointerException("The build's future returned null. This is most likely a bug in Jenkins core.");
 			}
@@ -129,7 +129,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 			listener.hyperlink("../../../" + abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
 			listener.getLogger().println(".");
 
-			if(propertiesFileToInject != null && !propertiesFileToInject.isEmpty()) {
+			if (propertiesFileToInject != null && !propertiesFileToInject.isEmpty()) {
 				listener.getLogger().println("Injecting " + propertiesFileToInject);
 				File artifactsDir = abstractBuild.getArtifactsDir();
 				File artifact = new File(artifactsDir, propertiesFileToInject);
@@ -154,6 +154,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 	/**
 	 * Searches for a project with the given name or throws an exception if the given project doesn't exist.
+	 *
 	 * @param jobName The name of the job to search for.
 	 * @return The first project that matches the given name (However, it shouldn't be possible to have a conflict.)
 	 */
@@ -194,17 +195,17 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		for (Object keyObj : properties.keySet()) {
 			String key = String.valueOf(keyObj);
 			String value = properties.getProperty(key);
-			listener.getLogger().println("\t`"+key+"`=>`"+value+"`");
+			listener.getLogger().println("\t`" + key + "`=>`" + value + "`");
 			values.add(new StringParameterValue(key, value));
 			addedParameters.add(key);
 		}
 
-		if(parameterDefinitions != null) {
+		if (parameterDefinitions != null) {
 			for (String defaultParameterName : parameterDefinitions.getParameterDefinitionNames()) {
-				if(!addedParameters.contains(defaultParameterName)) {
+				if (!addedParameters.contains(defaultParameterName)) {
 					ParameterDefinition parameterDefinition = parameterDefinitions.getParameterDefinition(defaultParameterName);
 					ParameterValue defaultParameterValue = parameterDefinition.getDefaultParameterValue();
-					listener.getLogger().println("\t`Using default: `"+defaultParameterName+"`");
+					listener.getLogger().println("\t`Using default: `" + defaultParameterName + "`");
 					values.add(defaultParameterValue);
 				}
 			}
