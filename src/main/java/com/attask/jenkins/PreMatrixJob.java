@@ -127,7 +127,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 			listener.getLogger().print("Finished running ");
 			listener.hyperlink("../../../" + abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
-			listener.getLogger().println(".");
+			listener.getLogger().println(": " + abstractBuild.getResult());
 
 			if (propertiesFileToInject != null && !propertiesFileToInject.isEmpty()) {
 				listener.getLogger().println("Injecting " + propertiesFileToInject);
