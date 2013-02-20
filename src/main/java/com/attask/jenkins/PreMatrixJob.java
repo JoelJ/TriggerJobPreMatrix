@@ -127,25 +127,35 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 			listener.getLogger().print("Finished running ");
 			listener.hyperlink("../../../" + abstractBuild.getUrl(), abstractBuild.getFullDisplayName());
-			listener.getLogger().println(": " + abstractBuild.getResult());
+
+			Result downstreamResult = abstractBuild.getResult();
+			listener.getLogger().println(": " + downstreamResult);
 
 			if (propertiesFileToInject != null && !propertiesFileToInject.isEmpty()) {
 				listener.getLogger().println("Injecting " + propertiesFileToInject);
 				File artifactsDir = abstractBuild.getArtifactsDir();
 				File artifact = new File(artifactsDir, propertiesFileToInject);
+				if(artifact.exists()) {
+					FileInputStream inputStream = new FileInputStream(artifact);
+					Properties properties;
+					try {
+						properties = new Properties();
+						properties.load(inputStream);
+					} finally {
+						inputStream.close();
+					}
 
-				FileInputStream inputStream = new FileInputStream(artifact);
-				Properties properties;
-				try {
-					properties = new Properties();
-					properties.load(inputStream);
-				} finally {
-					inputStream.close();
+					build.addAction(new MapInjectorAction(properties));
+				} else {
+					if(downstreamResult.isBetterThan(Result.FAILURE)) {
+						listener.error("Build was " + downstreamResult + " but couldn't find the artifact to inject (" + artifact.getAbsolutePath() + "). Failing.");
+						downstreamResult = Result.FAILURE;
+					} else {
+						listener.error("*NOT* Injecting " + propertiesFileToInject + ". File doesn't exist.");
+					}
 				}
-
-				build.addAction(new MapInjectorAction(properties));
 			}
-			return abstractBuild.getResult();
+			return downstreamResult;
 		} catch (ExecutionException e) {
 			log.severe(e.getMessage() + "\n" + ExceptionUtils.getFullStackTrace(e));
 			throw new RuntimeException(e);
