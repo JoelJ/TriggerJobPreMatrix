@@ -18,4 +18,7 @@
 	<f:entry title="Artifact Path to Inject" field="postPropertiesFileToInject" description="Optional.">
 		<f:textbox/>
 	</f:entry>
+	<f:entry title="Fail the build if downstream fails" field="postFailIfDownstreamFails">
+		<f:checkbox default="true"/>
+	</f:entry>
 </j:jelly>

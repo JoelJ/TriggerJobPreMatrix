@@ -30,11 +30,12 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 	private String postJobName;
 	private String postJobParameters;
 	private String postPropertiesFileToInject;
+	private boolean postFailIfDownstreamFails;
 	private static final int NUM_RETRIES = 5;
 
 	@DataBoundConstructor
 	public PreMatrixJob(String preJobName, String preJobParameters, String prePropertiesFileToInject,
-						String postJobName, String postJobParameters, String postPropertiesFileToInject) {
+						String postJobName, String postJobParameters, String postPropertiesFileToInject, boolean postFailIfDownstreamFails) {
 		super(false, false, "", null, new NoopMatrixConfigurationSorter());
 
 		this.preJobName = preJobName == null ? "" : preJobName.trim();
@@ -44,6 +45,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		this.postJobName = postJobName == null ? "" : postJobName.trim();
 		this.postJobParameters = postJobParameters;
 		this.postPropertiesFileToInject = postPropertiesFileToInject;
+		this.postFailIfDownstreamFails = postFailIfDownstreamFails;
 	}
 
 	@Override
@@ -66,7 +68,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		} finally {
 			if (!postJobName.isEmpty()) {
 				Result postResult = postRun(build, listener);
-				if (postResult.isWorseThan(result)) {
+				if (postFailIfDownstreamFails && postResult.isWorseThan(result)) {
 					result = postResult;
 				}
 			}
@@ -254,6 +256,10 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 
 	public String getPostPropertiesFileToInject() {
 		return postPropertiesFileToInject;
+	}
+
+	public boolean getPostFailIfDownstreamFails() {
+		return postFailIfDownstreamFails;
 	}
 
 	@Extension
