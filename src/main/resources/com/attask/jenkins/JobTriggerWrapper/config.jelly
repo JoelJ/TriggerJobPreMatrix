@@ -1,0 +1,24 @@
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+	<f:entry title="Pre Job to Trigger" field="preJobName" description="The name of the job to trigger before the matrix jobs run.">
+		<f:textbox/>
+	</f:entry>
+	<f:entry title="Parameters" field="preJobParameters" description="Optional.">
+		<f:textarea/>
+	</f:entry>
+	<f:entry title="Artifact Path to Inject" field="prePropertiesFileToInject" description="Optional. The path to the artifact of the downstream job to inject as environment variables.">
+		<f:textbox/>
+	</f:entry>
+
+	<f:entry title="Post Job to Trigger" field="postJobName" description="The name of the job to trigger after the matrix jobs run.">
+		<f:textbox/>
+	</f:entry>
+	<f:entry title="Parameters" field="postJobParameters" description="Optional.">
+		<f:textarea/>
+	</f:entry>
+	<f:entry title="Artifact Path to Inject" field="postPropertiesFileToInject" description="Optional.">
+		<f:textbox/>
+	</f:entry>
+	<f:entry title="Fail the build if downstream fails" field="postFailIfDownstreamFails">
+		<f:checkbox default="true"/>
+	</f:entry>
+</j:jelly>

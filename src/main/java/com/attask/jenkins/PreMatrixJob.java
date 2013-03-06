@@ -1,7 +1,6 @@
 package com.attask.jenkins;
 
 import hudson.Extension;
-import hudson.Util;
 import hudson.matrix.*;
 import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
@@ -76,7 +75,7 @@ public class PreMatrixJob extends DefaultMatrixExecutionStrategyImpl {
 		return result;
 	}
 
-	private static Result runJob(Run build, BuildListener listener, String jobName, String jobParametersNotExpanded, String propertiesFileToInject) throws InterruptedException, IOException {
+	public static Result runJob(Run build, BuildListener listener, String jobName, String jobParametersNotExpanded, String propertiesFileToInject) throws InterruptedException, IOException {
 		log.info(build.getFullDisplayName() + " running " + jobName + " before matrix jobs.");
 
 		AbstractProject<?, ? extends AbstractBuild> jobToRun = findJob(jobName);
